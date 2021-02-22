@@ -64,8 +64,8 @@ class MainWindow:
         self.b4 = Button(self.root, text="settings", command=self.button_boardsize)
         self.b4.grid(column = 3, row = 0, padx = 10, pady = 2)
 
-        self.b4 = Button(self.root, text="clear moves", command=self.clear_moves)
-        self.b4.grid(column = 4, row = 0, padx = 10, pady = 2)
+        self.b5 = Button(self.root, text="clear moves", command=self.clear_moves)
+        self.b5.grid(column = 4, row = 0, padx = 10, pady = 2)
 
         self.check1 = Checkbutton(self.root, text = "Symmetry mode", command=self.symmetry_change)
         self.check1.select()
@@ -221,8 +221,12 @@ class MainWindow:
 
     #Traverses the checkerboard using DFS, passes current position and number of current move
     def traversing(self, position, order):
-        
+        if self.killswitch() == False:
+            return False
+
         self.board[position[0]][position[1]].visited = True
+        
+
         #Stop condition
         if order == self.boardsize ** 2 - 1:
             self.board[position[0]][position[1]].text = str(order)
@@ -294,10 +298,15 @@ class MainWindow:
                     for move in self.moves:
                         if self.inbounds((i, k), move):
                             self.board[i + move[0]][k + move[1]].reachable += 1
+
+            self.start_time = time.perf_counter()
+            self.currently_traversing = True
+            self.board_paint()
             if not self.traversing(self.knight, 0):
                 PopupMessage("Warning", "Solution couldn't be found")
-            self.board_paint()
-            self.currently_traversing = True
+            else:
+                self.board_paint()
+            
         else:
             PopupMessage("Warning", "Some checks can't be reached")
 
@@ -353,6 +362,7 @@ class MainWindow:
         self.b2["state"] = "normal"
         self.b3["state"] = "disabled"
         self.b4["state"] = "normal"
+        self.b5["state"] = "normal"
         self.check1["state"] = "normal"
 
     def disable_buttons(self):
@@ -361,6 +371,7 @@ class MainWindow:
         self.b2["state"] = "disabled"
         self.b3["state"] = "normal"
         self.b4["state"] = "disabled"
+        self.b5["state"] = "disabled"
         self.check1["state"] = "disabled"
 
 
@@ -416,6 +427,12 @@ class MainWindow:
         self.moves = []
         self.paint_knight()
         self.board_paint()
+
+    def killswitch(self):
+        if time.perf_counter() - self.start_time >= 5:
+            return False
+        else:
+            return True
 
 
 class PopupMessage:
