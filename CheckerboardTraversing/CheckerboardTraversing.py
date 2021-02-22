@@ -29,19 +29,20 @@ class MainWindow:
     def __init__(self):
 
         self.check_size = 40
-        self.check_count = 16
+        self.boardsize = 16
         self.knight = (0, 0)
         self.moves = [(1, 2), (-1, 2), (1, -2), (-1, -2), (2, 1), (-2, 1), (2, -1), (-2, -1)]
         self.target_distance = 0
         self.clickable_canvas = True
         self.symmetry = True
+        self.currently_traversing = False
 
         self.root = Tk()
         self.root.state("zoomed")
         self.root.title("CheckerboardTraversing")
 
         #TBD pevná velikost
-        self.canvas = Canvas(self.root, width = self.check_size*self.check_count, height = self.check_size*self.check_count, highlightthickness = 0)
+        self.canvas = Canvas(self.root, width = self.check_size*self.boardsize, height = self.check_size*self.boardsize, highlightthickness = 0)
         self.canvas.grid(column = 0, columnspan = 6, row = 2, padx = 10, pady = 10)
         self.canvas.bind("<Button-1>", self.knight_move)
         self.canvas.bind("<Button-3>", self.add_move)
@@ -49,23 +50,26 @@ class MainWindow:
         self.create_board(self.canvas)
 
         self.b1 = Button(self.root, text="traverse", command=self.button_traverse)
-        self.b1.grid(column = 0, row = 1)
+        self.b1.grid(column = 0, row = 0, padx = 10, pady = 2)
 
         self.entry1 = Entry(self.root, width = 5)
-        self.entry1.grid(column = 1, row = 0)
+        self.entry1.grid(column = 1, row = 1, padx = 10, pady = 2)
         self.b2 = Button(self.root, text="reach", command=self.button_reach)
-        self.b2.grid(column = 1, row = 1)
+        self.b2.grid(column = 1, row = 0, padx = 10, pady = 2)
 
         self.b3 = Button(self.root, text="reset", command=self.button_reset)
-        self.b3.grid(column = 2, row = 1)
+        self.b3.grid(column = 2, row = 0, padx = 10, pady = 2)
         self.b3["state"] = "disabled"
 
-        self.b4 = Button(self.root, text="change boardsize", command=self.button_size)
-        self.b4.grid(column = 3, row = 1)
+        self.b4 = Button(self.root, text="settings", command=self.button_boardsize)
+        self.b4.grid(column = 3, row = 0, padx = 10, pady = 2)
+
+        self.b4 = Button(self.root, text="clear moves", command=self.clear_moves)
+        self.b4.grid(column = 4, row = 0, padx = 10, pady = 2)
 
         self.check1 = Checkbutton(self.root, text = "Symmetry mode", command=self.symmetry_change)
         self.check1.select()
-        self.check1.grid(column = 4, row = 1)
+        self.check1.grid(column = 5, row = 0, padx = 10, pady = 2)
 
         self.paint_knight()
         self.board_paint()
@@ -75,30 +79,30 @@ class MainWindow:
 
     #Creates the board, assigns base colors and canvas references to checks
     def create_board(self, canvas):
-        self.board = [[check() for i in range(self.check_count)] for k in range(self.check_count)]
+        self.board = [[check() for i in range(self.boardsize)] for k in range(self.boardsize)]
         #Assigns base (white/black) colors to checks
-        for i in range(self.check_count):
-            for k in range(self.check_count):
+        for i in range(self.boardsize):
+            for k in range(self.boardsize):
                 if (i+k)%2==0:
                     self.board[i][k].color = "white"
                 else:
                     self.board[i][k].color = "gray"
         #Creates canvas rectangles and textboxes, assigns their references to respective checkboxes
-        for i in range(self.check_count):
-            for k in range(self.check_count):
+        for i in range(self.boardsize):
+            for k in range(self.boardsize):
                 x1 = i*self.check_size
                 y1 = k*self.check_size
                 x2 = x1 + self.check_size
                 y2 = y1 + self.check_size
                 self.board[i][k].rectangle = self.canvas.create_rectangle((x1, y1, x2, y2), fill = self.board[i][k].color, outline = self.board[i][k].color)
-                self.board[i][k].text_box = self.canvas.create_text((x1 + x2)//2, (y1 + y2)//2, text = self.board[i][k].text)
+                self.board[i][k].text_box = self.canvas.create_text((x1 + x2)//2, (y1 + y2)//2, text = self.board[i][k].text, font = ("TkDefaultFont", self.check_size//3))
 
 
 
     #Changes the visible properites of all checks to the currently saved properties - either with or without special colors
     def board_paint(self):
-        for i in range(self.check_count):
-            for k in range(self.check_count):
+        for i in range(self.boardsize):
+            for k in range(self.boardsize):
                 self.canvas.itemconfig(self.board[i][k].rectangle, fill = self.board[i][k].visible_color(), outline = self.board[i][k].visible_color())
                 self.canvas.itemconfig(self.board[i][k].text_box, text = self.board[i][k].text)
         self.canvas.update()
@@ -107,7 +111,7 @@ class MainWindow:
     
     #Changes the knight's position, changes the respective colors of knight and his possible moves
     def knight_move(self, event):
-        if self.clickable_canvas == True:
+        if self.clickable_canvas == True or self.currently_traversing == True:
             #Uncolors the old knight and his possible moves
             self.board[self.knight[0]][self.knight[1]].special_color = ""
             for move in self.moves:
@@ -184,12 +188,14 @@ class MainWindow:
             self.paint_knight()
 
             self.board_paint()
-
+        elif self.currently_traversing == True:
+            self.unpaint_knight()
+            self.board_paint()
 
     
     #Checks if move relative to a position is inbounds (inside the board)
     def inbounds(self, position, move):
-        if((0 <= position[0] + move[0] <= self.check_count - 1) and (0 <= position[1] + move[1] <= self.check_count - 1)):
+        if((0 <= position[0] + move[0] <= self.boardsize - 1) and (0 <= position[1] + move[1] <= self.boardsize - 1)):
             return True
         else:
             return False
@@ -202,7 +208,7 @@ class MainWindow:
     
         #Uses BFS to traverse all of the reachable checks SUS
         queue = [self.knight]
-        while len(queue) > 0 and reachable_checks != self.check_count * self.check_count:
+        while len(queue) > 0 and reachable_checks != self.boardsize * self.boardsize:
             current_position = queue.pop(0)
             if self.board[current_position[0]][current_position[1]].visited == False:
                 self.board[current_position[0]][current_position[1]].visited = True
@@ -211,14 +217,14 @@ class MainWindow:
                     if self.inbounds(current_position, move) and self.board[current_position[0] + move[0]][current_position[1] + move[1]].visited == False:
                         queue.append((current_position[0] + move[0], current_position[1] + move[1]))
 
-        return reachable_checks == self.check_count * self.check_count
+        return reachable_checks == self.boardsize * self.boardsize
 
     #Traverses the checkerboard using DFS, passes current position and number of current move
     def traversing(self, position, order):
+        
         self.board[position[0]][position[1]].visited = True
-
         #Stop condition
-        if order == self.check_count ** 2 - 1:
+        if order == self.boardsize ** 2 - 1:
             self.board[position[0]][position[1]].text = str(order)
             return True
 
@@ -251,14 +257,15 @@ class MainWindow:
 
 
     def spread_general(self):
-        print("new")
+        if self.target_distance == 0 or self.moves == []:
+            self.board[self.knight[0]][self.knight[1]].special_color = "blue"
         queue = [(self.knight, 0), (None, None)]
         while len(queue) > 0 and queue != [(None, None)]:
             print(queue)
             current_position, current_distance = queue.pop(0)
             if current_position == None:
-                for i in range(self.check_count):
-                    for k in range(self.check_count):
+                for i in range(self.boardsize):
+                    for k in range(self.boardsize):
                         print(self.board[i][k].visited, end=" ")
                         self.board[i][k].visited = False
                         
@@ -281,14 +288,16 @@ class MainWindow:
             self.clickable_canvas = False
             self.disable_buttons()
             self.reset_attributes()
-            for i in range(self.check_count):
-                for k in range(self.check_count):
+            for i in range(self.boardsize):
+                for k in range(self.boardsize):
                     self.board[i][k].visited = False
                     for move in self.moves:
                         if self.inbounds((i, k), move):
                             self.board[i + move[0]][k + move[1]].reachable += 1
-            self.traversing(self.knight, 0)
+            if not self.traversing(self.knight, 0):
+                PopupMessage("Warning", "Solution couldn't be found")
             self.board_paint()
+            self.currently_traversing = True
         else:
             PopupMessage("Warning", "Some checks can't be reached")
 
@@ -299,12 +308,14 @@ class MainWindow:
         except:
             PopupMessage("Warning", "Not a number")
             return
+        if self.target_distance < 0:
+            PopupMessage("Warning", "Moves can't be negative")
+            return
 
         self.clickable_canvas = False
         self.disable_buttons()
 
         self.reset_attributes()
-
         self.spread_general()
 
         self.board_paint()
@@ -315,13 +326,12 @@ class MainWindow:
         self.paint_knight()
         self.board_paint()
     
+        self.currently_traversing = False
         self.clickable_canvas = True
         self.enable_buttons()
 
-    def button_size(self):
-        PopupInput("Input", "Input a number between 1 and 16 inclusive", self)
-
-
+    def button_boardsize(self):
+        PopupInput("Input", "Input a boardsize between 1 and 16 inclusive", self.boardsize, "Input a check size between 20 and 60", self.check_size, self)
 
     def paint_knight(self):
         self.board[self.knight[0]][self.knight[1]].special_color = "orange"
@@ -356,21 +366,22 @@ class MainWindow:
 
 
     def reset_attributes(self):
-        for i in range(self.check_count):
-            for k in range(self.check_count):
+        for i in range(self.boardsize):
+            for k in range(self.boardsize):
                 self.board[i][k].text = ""
                 self.board[i][k].special_color = ""
                 self.board[i][k].visited = False
                 self.board[i][k].reachable = 0 
 
-    def resize_board(self, new_size):
-        self.check_count = new_size
+    def resize_board(self, new_boardsize, new_checksize):
+        self.boardsize = new_boardsize
+        self.check_size = new_checksize
         self.canvas.delete("all")
-        self.canvas.config(width = self.check_size*self.check_count, height = self.check_size*self.check_count)
+        self.canvas.config(width = self.check_size*self.boardsize, height = self.check_size*self.boardsize)
         self.create_board(self.canvas)
         self.knight = (0, 0)
         for move in [x for x in self.moves]:
-            if abs(move[0]) >= self.check_count or abs(move[1]) >= self.check_count:
+            if abs(move[0]) >= self.boardsize or abs(move[1]) >= self.boardsize:
                 self.moves.remove(move)
         self.paint_knight()
         self.board_paint()
@@ -400,41 +411,56 @@ class MainWindow:
         else:
             self.symmetry = False
 
+    def clear_moves(self):
+        self.unpaint_knight()
+        self.moves = []
+        self.paint_knight()
+        self.board_paint()
+
+
 class PopupMessage:
     #Disables main window and displays a popup window with given text
-    def __init__(self, title, text):
+    def __init__(self, title, text1):
         self.popup = Toplevel()
         self.popup.title(title)
         self.popup.grab_set()
-        self.label1 = Label(self.popup, text=text)
-        self.label1.pack(side=TOP, fill="x")
-        self.b1 = Button(self.popup, text="OK", command = self.popup.destroy)
-        self.b1.pack()
+        self.label1 = Label(self.popup, text = text1)
+        self.label1.pack(side = TOP, fill = "x")
+        self.b1 = Button(self.popup, text = "OK", command = self.popup.destroy)
+        self.b1.pack(side = TOP)
         self.popup.mainloop()
 
 class PopupInput:
     #Disables main window and displays a popup window with given text and input box
-    def __init__(self, title, text, parent):
+    def __init__(self, title, text1, current1, text2, current2, parent):
         self.parent = parent
         self.popup = Toplevel()
         self.popup.title("Input")
         self.popup.grab_set()
-        self.label = Label(self.popup, text=text)
-        self.label.pack(side=TOP, fill="x")
-        self.entry = Entry(self.popup)
-        self.entry.pack(side = TOP, anchor = NW)
+        self.label1 = Label(self.popup, text=text1)
+        self.label1.pack(side=TOP, fill="x")
+        self.entry1 = Entry(self.popup)
+        self.entry1.pack(side = TOP)
+        self.entry1.insert(END, str(current1))
+        self.label2 = Label(self.popup, text=text2)
+        self.label2.pack(side=TOP, fill="x")
+        self.entry2 = Entry(self.popup)
+        self.entry2.pack(side = TOP)
+        self.entry2.insert(END, str(current2))
         self.b = Button(self.popup, text="OK", command = self.try_input)
-        self.b.pack()
+        self.b.pack(side = TOP)
         self.popup.mainloop()
 
     def try_input(self):
         try:
-            self.check_count = int(self.entry.get())
+            boardsize = int(self.entry1.get())
+            check_size = int(self.entry2.get())
         except:
             PopupMessage("Warning", "Not a number")
             return
-        if 1 <= int(self.entry.get()) <= 16:
-            self.parent.resize_board(int(self.entry.get()))
+
+        if 1 <= boardsize <= 16 and 20 <= check_size <= 60:
+            self.parent.resize_board(boardsize, check_size)
             self.popup.destroy()
         else:
             PopupMessage("Warning", "Number not in range")
