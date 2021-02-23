@@ -56,7 +56,7 @@ class MainWindow:
 
         #---App visuals---#
         #(Everyting is positioned using grid)
-        #Primary window setup
+        #Primary window setup 
         self.root = Tk()
         self.root.state("zoomed")
         self.root.title("CheckerboardTraversing")
