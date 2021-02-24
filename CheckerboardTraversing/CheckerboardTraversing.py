@@ -58,14 +58,13 @@ class MainWindow:
         #(Everyting is positioned using grid)
         #Primary window setup 
         self.root = Tk()
-        #self.root.state("zoomed")
         self.root.title("CheckerboardTraversing")
         #Canvas setup
         self.canvas = Canvas(self.root, width = self.check_size*self.boardsize, height = self.check_size*self.boardsize, highlightthickness = 0)
         self.canvas.grid(column = 0, columnspan = 6, row = 2, padx = 10, pady = 10)
         self.canvas.bind("<Button-1>", self.knight_move)
         self.canvas.bind("<Button-3>", self.add_remove_move)
-        #Create a board on the canvas
+
         self.create_board(self.canvas)
         #Creating the UI bar
         self.b1 = Button(self.root, text="Tour the board", command=self.button_tour)
@@ -209,7 +208,7 @@ class MainWindow:
         for move in self.moves:
             if self.inbounds(self.knight, move):
                 self.board[self.knight[0] + move[0]][self.knight[1] + move[1]].special_color = "red"
-    #Used to only erase the knight (not text for example)
+    #Used to only erase the knight (and not other properties)
     def unpaint_knight(self):
         self.board[self.knight[0]][self.knight[1]].special_color = ""
         for move in self.moves:
@@ -252,7 +251,8 @@ class MainWindow:
                         queue.append((current_position[0] + move[0], current_position[1] + move[1]))
 
         return reachable_checks == self.boardsize * self.boardsize
-    #Traverses the checkerboard using DFS (implemented with recursion), writes the number of the move onto the respective check, passes the current position and number of current move
+    #Traverses the checkerboard using DFS (implemented with recursion), writes the number of the move in the solution onto the respective check
+    #Passes the current position and number of current move
     def tour(self, position, order):
         #Kills the search after too much time passes
         if self.killswitch() == False:
@@ -298,7 +298,7 @@ class MainWindow:
             return True
 
     #-Finding all checks in a given distance-
-    #Searches for every check reachable in target_distance jumps using BFS
+    #Searches for every check reachable in target_distance jumps using BFS, implemented with a queue
     def spread(self):
         #If the knight can't move or doesn't have to, only color the knight check
         if self.target_distance == 0 or self.moves == []:
@@ -415,7 +415,7 @@ class MainWindow:
         self.paint_knight()
         self.board_paint()
 
-    #If going from asymmetry to symmetry, adds moves so they are symetric
+    #If going from asymmetry to symmetry, adds moves so the knight is symmetric
     def symmetry_change(self):
         if self.symmetry == False:
             self.symmetry = True
@@ -440,7 +440,6 @@ class MainWindow:
             self.board_paint()
         else:
             self.symmetry = False
-
     #Enables all but reset button and disables reset button
     def enable_buttons(self):
         self.b1["state"] = "normal"
@@ -476,7 +475,7 @@ class PopupMessage:
 
 
 
-#Temporarily disables parent window and displays a popup window with given title and two sets of text, input window and default value, and a button
+#Temporarily disables parent window and displays a popup window with given title and two sets of (text, input window and default value), and a button
 #On correct input and button push calls a function of MainWindow that resizes the board
 class PopupInput:
     def __init__(self, title, text1, current1, text2, current2, parent):
