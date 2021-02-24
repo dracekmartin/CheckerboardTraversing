@@ -335,7 +335,7 @@ class MainWindow:
         if self.all_reachable():
             self.modifiy_knight = False
             self.disable_buttons()
-            self.message1.config(text = "Left click on a square to show the possible moves from that square\nRight click anywhere on the board to hide the piece")
+            self.message1.config(text = "Left click on a square to show the possible moves from that square\nRight click anywhere on the board to hide the moves")
             self.currently_touring = True
 
             self.board_paint()
