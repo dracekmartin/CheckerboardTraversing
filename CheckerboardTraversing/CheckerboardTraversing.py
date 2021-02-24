@@ -58,7 +58,7 @@ class MainWindow:
         #(Everyting is positioned using grid)
         #Primary window setup 
         self.root = Tk()
-        self.root.state("zoomed")
+        #self.root.state("zoomed")
         self.root.title("CheckerboardTraversing")
         #Canvas setup
         self.canvas = Canvas(self.root, width = self.check_size*self.boardsize, height = self.check_size*self.boardsize, highlightthickness = 0)
@@ -73,7 +73,7 @@ class MainWindow:
 
         self.entry1 = Entry(self.root, width = 5)
         self.entry1.grid(column = 1, row = 1, padx = 10, pady = 2)
-        self.b2 = Button(self.root, text="Reach", command=self.button_reach)
+        self.b2 = Button(self.root, text="Reach in n jumps", command=self.button_reach)
         self.b2.grid(column = 1, row = 0, padx = 10, pady = 2)
 
         self.b3 = Button(self.root, text="Reset", command=self.button_reset)
@@ -89,6 +89,9 @@ class MainWindow:
         self.check1 = Checkbutton(self.root, text = "Symmetry mode", command=self.symmetry_change)
         self.check1.select()
         self.check1.grid(column = 5, row = 0, padx = 10, pady = 2)
+
+        self.message1 = Message(self.root, width = 400, text = "Left click on a square to move the piece there\nRight click on a square to add it as a possible move" )
+        self.message1.grid(column = 6, row = 0, rowspan = 2, padx = 10, pady = 2)
         
         self.paint_knight()
         self.board_paint()
@@ -313,7 +316,7 @@ class MainWindow:
                         self.board[i][k].visited = False
                 queue.append((None, None))
             else:
-                #If the current check is the right amount of jumps awaz from start, colors it
+                #If the current check is the right amount of jumps away from start, colors it
                 if current_distance == self.target_distance:
                     self.board[current_position[0]][current_position[1]].special_color = "blue"
                 else:
@@ -332,6 +335,7 @@ class MainWindow:
         if self.all_reachable():
             self.modifiy_knight = False
             self.disable_buttons()
+            self.message1.config(text = "Left click on a square to show the possible moves from that square\nRight click anywhere on the board to hide the piece")
             self.currently_touring = True
 
             self.board_paint()
@@ -349,7 +353,7 @@ class MainWindow:
             self.start_time = time.perf_counter()   
             
             if not self.tour(self.knight, 0):
-                PopupMessage("Warning", "Solution couldn't be found")
+                PopupMessage("Warning", "Solution doesn't exist or it couldn't be found")
             else:
                 self.board_paint()
         else:
@@ -365,9 +369,13 @@ class MainWindow:
         if self.target_distance < 0:
             PopupMessage("Warning", "Moves can't be negative")
             return
+        if self.target_distance > 100:
+            PopupMessage("Warning", "Maximum number of moves is 100")
+            return
 
         self.modifiy_knight = False
         self.disable_buttons()
+        self.message1.config(text = "")
 
         self.reset_attributes()
         self.spread()
@@ -380,12 +388,13 @@ class MainWindow:
         self.currently_touring = False
         self.modifiy_knight = True
         self.enable_buttons()
+        self.message1.config(text = "Left click on a square to move the piece there\nRight click on a square to add it as a possible move")
 
         self.paint_knight()
         self.board_paint()
 
     def button_setting(self):
-        PopupInput("Input", "Input a boardsize between 1 and 16 inclusive", self.boardsize, "Input a check size between 20 and 60", self.check_size, self)
+        PopupInput("Settings", "Input a boardsize between 1 and 16 inclusive", self.boardsize, "Input a check size between 20 and 60", self.check_size, self)
     #Resizes the board with given parameters, called from input popup
     def resize_board(self, new_boardsize, new_checksize):
         self.boardsize = new_boardsize
@@ -473,7 +482,7 @@ class PopupInput:
     def __init__(self, title, text1, current1, text2, current2, parent):
         self.parent = parent
         self.popup = Toplevel()
-        self.popup.title("Input")
+        self.popup.title(title)
         self.popup.grab_set()
         self.label1 = Label(self.popup, text=text1)
         self.label1.pack(side=TOP, fill="x")
